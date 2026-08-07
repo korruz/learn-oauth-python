@@ -160,8 +160,7 @@ async def authorize_endpoint(
     )
 
     # Display login form with demo accounts
-    return templates.TemplateResponse("login.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "login.html", {
         "auth_request": auth_request,
         "demo_accounts": user_store.get_demo_accounts()
     })
@@ -214,8 +213,7 @@ async def login_endpoint(
             response_type=response_type
         )
 
-        return templates.TemplateResponse("login.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "login.html", {
             "auth_request": auth_request,
             "demo_accounts": user_store.get_demo_accounts(),
             "error": "Invalid username or password"

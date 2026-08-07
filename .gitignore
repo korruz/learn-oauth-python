@@ -192,3 +192,5 @@ nohup.out
 auth_server.log
 resource_server.log
 client.log
+# uv lock file (local toolchain, not tracked upstream)
+uv.lock

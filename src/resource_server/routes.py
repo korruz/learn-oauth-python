@@ -187,7 +187,10 @@ async def protected_resource(
             "data",
             "protected-resource.txt"
         )
-        with open(resource_path, "r") as f:
+        # The file contains non-ASCII characters, so the encoding must be
+        # explicit -- otherwise Python uses the locale default (e.g. GBK on
+        # zh-CN Windows) and raises UnicodeDecodeError.
+        with open(resource_path, "r", encoding="utf-8") as f:
             content = f.read()
 
         # Replace placeholders with actual values
@@ -197,7 +200,7 @@ async def protected_resource(
         content = content.replace("{timestamp}", timestamp)
         content = content.replace("{token_info}", token_summary)
 
-    except FileNotFoundError:
+    except (FileNotFoundError, OSError, UnicodeDecodeError):
         # Fallback content if file doesn't exist
         content = """🔒 PROTECTED RESOURCE 🔒
 
