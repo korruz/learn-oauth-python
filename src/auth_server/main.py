@@ -21,10 +21,11 @@ Security Features:
 - Security headers for web protection
 """
 
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 from .routes import authorize_endpoint, login_endpoint, token_endpoint
 from ..shared.oauth_models import TokenRequest, TokenResponse
 from ..shared.logging_utils import OAuthLogger
@@ -249,8 +250,38 @@ async def login(
           - One-time use authorization codes
           - Short-lived tokens (1 hour default)
           """)
-async def token(token_request: TokenRequest):
-    """Exchange authorization code for access token with PKCE verification."""
+async def token(
+    grant_type: str = Form(..., description="OAuth grant type (authorization_code)"),
+    code: str = Form(..., description="Authorization code from /authorize"),
+    redirect_uri: str = Form(..., description="Client callback URL"),
+    client_id: str = Form(..., description="OAuth client identifier"),
+    code_verifier: str = Form(..., description="PKCE code verifier")
+):
+    """Exchange authorization code for access token with PKCE verification.
+
+    RFC 6749 section 4.1.3 requires the token endpoint to accept
+    application/x-www-form-urlencoded, so the parameters are declared as form
+    fields and assembled into a TokenRequest for validation.
+    """
+    try:
+        token_request = TokenRequest(
+            grant_type=grant_type,
+            code=code,
+            redirect_uri=redirect_uri,
+            client_id=client_id,
+            code_verifier=code_verifier
+        )
+    except ValidationError as exc:
+        # RFC 6749 section 5.2: malformed token requests are 400 invalid_request,
+        # not FastAPI's default 422.
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "invalid_request",
+                "error_description": f"Invalid token request parameters: {exc.error_count()} error(s)"
+            }
+        )
+
     return await token_endpoint(token_request)
 
 # Root endpoint with comprehensive service information

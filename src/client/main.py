@@ -102,8 +102,7 @@ async def start_oauth_flow(request: Request):
         }
     )
 
-    return templates.TemplateResponse("start_flow.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "start_flow.html", {
         "authorization_url": authorization_url,
         "client_id": OAUTH_CONFIG["client_id"],
         "redirect_uri": OAUTH_CONFIG["redirect_uri"],
@@ -153,8 +152,7 @@ async def oauth_callback(request: Request, code: Optional[str] = None,
             }
         )
 
-        return templates.TemplateResponse("error.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "error.html", {
             "error": error,
             "error_description": error_description,
             "state": state
@@ -180,8 +178,7 @@ async def oauth_callback(request: Request, code: Optional[str] = None,
             }
         )
 
-        return templates.TemplateResponse("error.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "error.html", {
             "error": "invalid_state",
             "error_description": "State parameter validation failed. Possible CSRF attack.",
             "state": state
@@ -200,8 +197,7 @@ async def oauth_callback(request: Request, code: Optional[str] = None,
         }
     )
 
-    return templates.TemplateResponse("callback.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "callback.html", {
         "code": code,
         "state": state,
         "code_preview": code[:20] + "..." + code[-10:] if len(code) > 30 else code
@@ -224,15 +220,13 @@ async def exchange_token(request: Request):
     pkce_verifier = request.session.get("pkce_verifier")
 
     if not authorization_code:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "error.html", {
             "error": "missing_code",
             "error_description": "No authorization code found in session. Please restart the OAuth flow."
         })
 
     if not pkce_verifier:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "error.html", {
             "error": "missing_verifier",
             "error_description": "No PKCE verifier found in session. Please restart the OAuth flow."
         })
@@ -289,8 +283,7 @@ async def exchange_token(request: Request):
                     }
                 )
 
-                return templates.TemplateResponse("token_success.html", {
-                    "request": request,
+                return templates.TemplateResponse(request, "token_success.html", {
                     "access_token": token_data["access_token"],
                     "token_type": token_data.get("token_type", "Bearer"),
                     "expires_in": token_data.get("expires_in", 3600),
@@ -310,8 +303,7 @@ async def exchange_token(request: Request):
                     }
                 )
 
-                return templates.TemplateResponse("error.html", {
-                    "request": request,
+                return templates.TemplateResponse(request, "error.html", {
                     "error": error_data.get("error", "token_exchange_failed"),
                     "error_description": error_data.get("error_description", f"Token exchange failed with status {response.status_code}")
                 })
@@ -327,8 +319,7 @@ async def exchange_token(request: Request):
             }
         )
 
-        return templates.TemplateResponse("error.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "error.html", {
             "error": "network_error",
             "error_description": f"Failed to connect to authorization server: {str(e)}"
         })
@@ -349,8 +340,7 @@ async def access_protected_resource(request: Request):
     token_type = request.session.get("token_type", "Bearer")
 
     if not access_token:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "error.html", {
             "error": "missing_token",
             "error_description": "No access token found in session. Please complete the OAuth flow first."
         })
@@ -391,8 +381,7 @@ async def access_protected_resource(request: Request):
                     }
                 )
 
-                return templates.TemplateResponse("resource_success.html", {
-                    "request": request,
+                return templates.TemplateResponse(request, "resource_success.html", {
                     "resource_content": resource_content,
                     "token_used": access_token[:20] + "..." + access_token[-10:],
                     "resource_url": f"{OAUTH_CONFIG['resource_server']}/protected"
@@ -410,8 +399,7 @@ async def access_protected_resource(request: Request):
                     }
                 )
 
-                return templates.TemplateResponse("error.html", {
-                    "request": request,
+                return templates.TemplateResponse(request, "error.html", {
                     "error": "resource_access_failed",
                     "error_description": f"Failed to access protected resource: {error_msg}"
                 })
@@ -427,8 +415,7 @@ async def access_protected_resource(request: Request):
             }
         )
 
-        return templates.TemplateResponse("error.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "error.html", {
             "error": "network_error",
             "error_description": f"Failed to connect to resource server: {str(e)}"
         })
@@ -449,8 +436,7 @@ async def get_user_info(request: Request):
     token_type = request.session.get("token_type", "Bearer")
 
     if not access_token:
-        return templates.TemplateResponse("error.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "error.html", {
             "error": "missing_token",
             "error_description": "No access token found in session. Please complete the OAuth flow first."
         })
@@ -493,8 +479,7 @@ async def get_user_info(request: Request):
                     }
                 )
 
-                return templates.TemplateResponse("user_info.html", {
-                    "request": request,
+                return templates.TemplateResponse(request, "user_info.html", {
                     "user_info": user_info,
                     "token_used": access_token[:20] + "..." + access_token[-10:],
                     "userinfo_url": f"{OAUTH_CONFIG['resource_server']}/userinfo"
@@ -511,8 +496,7 @@ async def get_user_info(request: Request):
                     }
                 )
 
-                return templates.TemplateResponse("error.html", {
-                    "request": request,
+                return templates.TemplateResponse(request, "error.html", {
                     "error": "userinfo_access_failed",
                     "error_description": f"Failed to access user info: {error_msg}"
                 })
@@ -528,8 +512,7 @@ async def get_user_info(request: Request):
             }
         )
 
-        return templates.TemplateResponse("error.html", {
-            "request": request,
+        return templates.TemplateResponse(request, "error.html", {
             "error": "network_error",
             "error_description": f"Failed to connect to resource server: {str(e)}"
         })

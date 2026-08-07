@@ -12,23 +12,30 @@ from typing import Optional, Union
 from urllib.parse import urlparse
 
 
-# Try to import bcrypt via passlib, fall back to basic hashing if not available
-try:
-    from passlib.context import CryptContext
-    from passlib.hash import bcrypt
+# Use the bcrypt library directly, falling back to basic hashing if unavailable.
+# passlib is deliberately not used: it is unmaintained (last release 2020) and its
+# backend probe reads bcrypt.__about__.__version__, which bcrypt removed in 4.1.
+import hashlib
 
-    # Configure password context with bcrypt
-    pwd_context = CryptContext(
-        schemes=["bcrypt"],
-        deprecated="auto",
-        bcrypt__rounds=12  # Strong but reasonable rounds for demo
-    )
+try:
+    import bcrypt
+
+    BCRYPT_ROUNDS = 12  # Strong but reasonable rounds for demo
     BCRYPT_AVAILABLE = True
 except ImportError:
-    # Fallback for when passlib/bcrypt is not available
-    import hashlib
-    pwd_context = None
+    # Fallback for when bcrypt is not available
+    bcrypt = None
+    BCRYPT_ROUNDS = 12
     BCRYPT_AVAILABLE = False
+
+# bcrypt only considers the first 72 bytes of a password and raises on longer
+# input, so callers must pre-truncate at the byte level (not the character level).
+BCRYPT_MAX_BYTES = 72
+
+
+def _bcrypt_secret(password: str) -> bytes:
+    """Encode a password for bcrypt, truncating to its 72-byte limit."""
+    return password.encode("utf-8")[:BCRYPT_MAX_BYTES]
 
 
 class PasswordHasher:
@@ -61,7 +68,10 @@ class PasswordHasher:
             raise ValueError("Password cannot be empty")
 
         if BCRYPT_AVAILABLE:
-            return pwd_context.hash(password)
+            return bcrypt.hashpw(
+                _bcrypt_secret(password),
+                bcrypt.gensalt(rounds=BCRYPT_ROUNDS),
+            ).decode("ascii")
         else:
             # Fallback to SHA256 with salt (not recommended for production)
             salt = secrets.token_hex(16)
@@ -87,8 +97,11 @@ class PasswordHasher:
             return False
 
         try:
-            if BCRYPT_AVAILABLE and hashed_password.startswith('$2b$'):
-                return pwd_context.verify(password, hashed_password)
+            if BCRYPT_AVAILABLE and hashed_password.startswith(('$2a$', '$2b$', '$2y$')):
+                return bcrypt.checkpw(
+                    _bcrypt_secret(password),
+                    hashed_password.encode("ascii"),
+                )
             elif hashed_password.startswith('sha256$'):
                 # Handle fallback SHA256 format
                 parts = hashed_password.split('$')
